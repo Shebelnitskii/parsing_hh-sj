@@ -1,10 +1,11 @@
 from abc import ABC,abstractmethod
 import os
 import requests
+import json
 
 class Engine(ABC):
     @abstractmethod
-    def get_request(self, url: str, params: dict) -> dict:
+    def get_class_vacancies(self, url: str, params: dict) -> dict:
         """Метод для выполнения запроса к сайту и получения данных"""
         pass
 
@@ -17,30 +18,44 @@ class HeadHunterAPI(Engine):
     def __init__(self):
         self.url_hh = "https://api.hh.ru/vacancies"
 
-    def get_request(self, key: str) -> dict:
-        self.params = {'text': key, 'per_page': 10}
-        response = requests.get(self.url_hh, params=self.params)
+    def get_class_vacancies(self, key: str, top_n: int) -> dict:
+        params = {'text': key, 'per_page': top_n}
+        response = requests.get(self.url_hh, params=params)
         if response.ok:
             data = response.json()
             vacancies_data = data['items']
-            return vacancies_data
+            self.vacancies = []
+            for vacancy in vacancies_data:
+                title = vacancy['name']
+                salary_data = vacancy['salary']
+                try:
+                    if salary_data['to'] == None: ### Проверка на диапазон зарплаты
+                        salary = f"{salary_data['from']} {salary_data['currency']}"
+                    elif salary_data['from'] == None:
+                        salary = f"{salary_data['to']} {salary_data['currency']}"
+                    else:
+                        salary = f"{salary_data['from']}-{salary_data['to']} {salary_data['currency']}"
+                except:
+                    salary = f'Информация отсутствует'
+                description = vacancy['snippet']['requirement']
+                employer = vacancy['employer']['name']
+                url = vacancy['alternate_url']
+                vacancy = VacancyHH(title, salary, description, employer, url)
+                self.vacancies.append(vacancy)
+            return self.vacancies
         else:
-            vacancies_data = []
-            return vacancies_data
+            self.vacancies = []
+            return self.vacancies
 
-    def get_class_vacancies(self, key):
-        vacancies = []
-        for vacancy in self.get_request(key):
-            title = vacancy.get('name', '')
-            salary_data = vacancy.get('salary', {})
-            salary = f"{salary_data.get('from', '')}-{salary_data.get('to', '')} {salary_data.get('currency', '')}"
-            description = vacancy.get('snippet', {}).get('requirement', '')
-            employer = vacancy.get('employer', {}).get('name', '')
-            url = vacancy.get('alternate_url', {})
-            vacancy = VacancyHH(title=title, salary=salary, description=description, employer=employer, url=url)
-            vacancies.append(vacancy)
-        return vacancies
+    def save_vacancies_to_json(self, file_name :str = 'JSON_HH'):
+        """
+        Сохраняет информацию о вакансиях в файл JSON.
 
+        :param vacancies: Список экземпляров класса VacancyHH.
+        :param file_name: Имя файла для сохранения.
+        """
+        with open(file_name, 'w', encoding='utf-8') as file:
+            json.dump([vars(vacancy) for vacancy in self.vacancies], file, ensure_ascii=False, indent=4)
 
 class VacancyHH:
     def __init__(self, title, salary, description, employer, url):
@@ -70,11 +85,13 @@ class VacancyHH:
 #         return data
 
 hh_api = HeadHunterAPI()
-# find_key_hh:str = input("Введите ключ-поиск:\n")
-find_key_hh = 'python'
-# params = {'text': 'python', 'per_page': 1}
-hh_dict_class_vacancies = hh_api.get_class_vacancies(find_key_hh)
-print(hh_dict_class_vacancies[0])
+# search_query = input("Введите поисковый запрос: ")
+# top_n = int(input("Введите количество вакансий для вывода в топ N: "))
+search_query = 'python'
+top_n = 10
+hh_dict_class_vacancies = hh_api.get_class_vacancies(search_query, top_n)
+print(len(hh_dict_class_vacancies))
+hh_api.save_vacancies_to_json()
 
 
 
