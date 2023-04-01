@@ -1,7 +1,8 @@
 from abc import ABC,abstractmethod
+import json
 import os
 import requests
-import json
+from src.json_saver import JSONSaver
 
 class Engine(ABC):
     @abstractmethod
@@ -47,16 +48,6 @@ class HeadHunterAPI(Engine):
             self.vacancies = []
             return self.vacancies
 
-    def save_vacancies_to_json(self, file_name :str = 'JSON_HH'):
-        """
-        Сохраняет информацию о вакансиях в файл JSON.
-
-        :param vacancies: Список экземпляров класса VacancyHH.
-        :param file_name: Имя файла для сохранения.
-        """
-        with open(file_name, 'w', encoding='utf-8') as file:
-            json.dump([vars(vacancy) for vacancy in self.vacancies], file, ensure_ascii=False, indent=4)
-
 class VacancyHH:
     def __init__(self, title, salary, description, employer, url):
         self.title = title
@@ -88,10 +79,14 @@ hh_api = HeadHunterAPI()
 # search_query = input("Введите поисковый запрос: ")
 # top_n = int(input("Введите количество вакансий для вывода в топ N: "))
 search_query = 'python'
-top_n = 10
-hh_dict_class_vacancies = hh_api.get_class_vacancies(search_query, top_n)
-print(len(hh_dict_class_vacancies))
-hh_api.save_vacancies_to_json()
+top_n = 20
+hh_vacancies = hh_api.get_class_vacancies(search_query, top_n)
+print(len(hh_vacancies))
+json_saver = JSONSaver()
+json_saver.add_vacancy(hh_vacancies)
+# json_saver.get_vacancies_by_salary("50000 RUR")
+# json_saver.clear_json()
+json_saver.delete_vacancy("РаЗрАботчик,django,c++")
 
 
 
