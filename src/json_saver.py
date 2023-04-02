@@ -23,7 +23,7 @@ class JSONSaver:
         with open(self.file_name, 'w', encoding='utf-8') as file:
             json.dump('', file, ensure_ascii=False, indent=4)
 
-    def get_vacancies_by_salary(self, salary):
+    def get_vacancies_by_salary(self, salary_input):
         """
         Возвращает список вакансий с заданной зарплатой.
 
@@ -32,11 +32,22 @@ class JSONSaver:
         """
         with open(self.file_name, 'r', encoding='utf-8') as file:
             vacancy = json.load(file)
-        matching_vacancies = []
-        for vacancy in vacancy:
-            if vacancy['salary'] == salary:
-                matching_vacancies.append(vacancy)
-        return matching_vacancies
+        with open(self.file_name, 'w', encoding='utf-8') as file:
+            test_dict = []
+            salary, currency = salary_input.split(' ')
+            for vac in vacancy:
+                try:
+                    if '-' in vac['salary']:
+                        salary_split = vac['salary'].split('-')
+                        if int(salary) <= int(salary_split[0]):
+                            test_dict.append(vac)
+                    else:
+                        salary_split = vac['salary'].split()
+                        if int(salary) <= int(salary_split[0]):
+                            test_dict.append(vac)
+                except:
+                    continue
+            json.dump(test_dict, file, ensure_ascii=False, indent=4)
 
     def delete_vacancy(self, vacancy):
         """
@@ -48,11 +59,11 @@ class JSONSaver:
             vacancies = json.load(file)
         with open(self.file_name, 'w', encoding='utf-8') as file:
             test_dict = []
+            vacancy_lower = vacancy.lower()
+            split_vacancy = re.findall(r'\b\w+\b', vacancy_lower)
             for vac in vacancies:
                 title_lower = vac['title'].lower()
                 split_title = re.findall(r'\b\w+\b', title_lower)
-                vacancy_lower = vacancy.lower()
-                split_vacancy = re.findall(r'\b\w+\b', vacancy_lower)
                 if set(split_vacancy) & set(split_title):
                     continue
                 else:
