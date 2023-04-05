@@ -1,5 +1,7 @@
-import src.classes
+import src.abstract
 from src.json_saver import JSONSaver
+from src.superjob import SuperJobAPI
+from src.headhuner import HeadHunterAPI
 
 
 def user_interaction():
@@ -21,18 +23,18 @@ def check_platform():
             print('Выход из программы')
             raise SystemExit
         elif set(platform_input) & {'headhunter', 'hh'} and set(platform_input) & {'superjob', 'sj'}:
-            hh_api = src.classes.HeadHunterAPI()
-            sj_api = src.classes.SuperJobAPI()
+            hh_api = HeadHunterAPI()
+            sj_api = SuperJobAPI()
             print('Вы выбрали поиск в HH и SJ')
             return hh_api, sj_api
         # обе платформы
         elif set(platform_input) & {'headhunter', 'hh'}:
-            hh_api = src.classes.HeadHunterAPI()
+            hh_api = HeadHunterAPI()
             print('Вы выбрали поиск в HH')
             return hh_api, None
         # только HeadHunter
         elif set(platform_input) & {'superjob', 'sj'}:
-            sj_api = src.classes.SuperJobAPI()
+            sj_api = SuperJobAPI()
             print('Вы выбрали поиск в SJ')
             return None, sj_api
         # только SuperJob
