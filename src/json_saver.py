@@ -7,27 +7,27 @@ class JSONSaver:
     def __init__(self):
         self.file_name: str = 'JSON.json'
 
-    def add_vacancy(self, vacanciesHH=None, vacanciesSJ=None):
+    def add_vacancies(self, headhunter=None, superjob=None):
         """
         Сохраняет информацию о вакансиях в файл JSON.
         """
-        if vacanciesHH is None and vacanciesSJ is None:
-            print("Введите хотя бы одно значение")
-        elif vacanciesHH is not None and vacanciesSJ is None:
-            with open('JSON_HH.json', 'w', encoding='utf-8') as file:
+        if headhunter is not None and superjob is None:
+            with open(self.file_name, 'w', encoding='utf-8') as file:
                 json.dump(
-                    sorted([vars(vacancy) for vacancy in vacanciesHH], key=lambda x: x['salary']['from'], reverse=True),
+                    sorted([vars(vacancy) for vacancy in headhunter], key=lambda x: x['salary']['from'], reverse=True),
                     file, ensure_ascii=False, indent=4)
-        elif vacanciesSJ is not None and vacanciesHH is None:
-            with open('JSON_SJ.json', 'w', encoding='utf-8') as file:
+        elif superjob is not None and headhunter is None:
+            with open(self.file_name, 'w', encoding='utf-8') as file:
                 json.dump(
-                    sorted([vars(vacancy) for vacancy in vacanciesSJ], key=lambda x: x['salary']['from'], reverse=True),
+                    sorted([vars(vacancy) for vacancy in superjob], key=lambda x: x['salary']['from'], reverse=True),
                     file, ensure_ascii=False, indent=4)
+        elif headhunter is None and superjob is None:
+            print('--------------------------------')
         else:
             with open('JSON_HH.json', 'w', encoding='utf-8') as file:
-                json.dump([vars(vacancy) for vacancy in vacanciesHH], file, ensure_ascii=False, indent=4)
+                json.dump([vars(vacancy) for vacancy in headhunter], file, ensure_ascii=False, indent=4)
             with open('JSON_SJ.json', 'w', encoding='utf-8') as file:
-                json.dump([vars(vacancy) for vacancy in vacanciesSJ], file, ensure_ascii=False, indent=4)
+                json.dump([vars(vacancy) for vacancy in superjob], file, ensure_ascii=False, indent=4)
             # Открыть первый файл JSON и прочитать данные
             with open('JSON_HH.json', 'r', encoding='utf-8') as f:
                 json_hh = json.load(f)
@@ -36,8 +36,9 @@ class JSONSaver:
             with open('JSON_SJ.json', 'r', encoding='utf-8') as f:
                 json_sj = json.load(f)
             vacancies = json_hh + json_sj
+            sorted_vacancies = sorted(vacancies, key=lambda v: v['salary']['from'], reverse=True)
             with open(self.file_name, 'w', encoding='utf-8') as f:
-                json.dump(vacancies, f, ensure_ascii=False, indent=4)
+                json.dump(sorted_vacancies, f, ensure_ascii=False, indent=4)
 
             # удаляем JSON-файлы
             os.remove("JSON_HH.json")
@@ -61,34 +62,43 @@ class JSONSaver:
             vacancy = json.load(file)
         with open(self.file_name, 'w', encoding='utf-8') as file:
             test_dict = []
-            salary, currency = salary_input.split(' ')
+            try:
+                salary, currency = salary_input.split(' ')
+                if currency in ['руб', 'RUR', 'rub']:
+                    currency = ['руб', 'rur', 'rub', 'RUR']
+            except:
+                salary = salary_input
+                currency = ['руб', 'rur', 'rub', 'RUR']
             for vac in vacancy:
                 try:
-                    if int(vac['salary']['from']) >= int(salary) and str(vac['salary']['currency']) in ['RUR', 'rub']:
+                    if int(vac['salary']['from']) >= int(salary) and vac['salary']['currency'] in currency:
                         test_dict.append(vac)
-                    elif vac['salary']['currency'].lower() in ['usd', 'USD']:
+                    elif vac['salary']['currency'] in ['usd', 'USD'] and int(vac['salary']['from']) * 75 >= int(salary):
                         test_dict.append(vac)
                 except:
                     continue
             json.dump(test_dict, file, ensure_ascii=False, indent=4)
 
-    def delete_vacancy(self, vacancy):
-        """
-        Удаляет вакансию из файла JSON.
+    def search_words(self, search_words):
+        if search_words == '':
+            with open(self.file_name, 'r', encoding='utf-8') as file:
+                vacancies = json.load(file)
+            return vacancies
+        else:
+            with open(self.file_name, 'r', encoding='utf-8') as file:
+                vacancies = json.load(file)
+            with open(self.file_name, 'w', encoding='utf-8') as file:
+                search_dict = []
+                words_lower = search_words.lower()
+                split_vacancy = re.findall(r'\b\w+\b', words_lower)
+                for vac in vacancies:
+                    title_lower = str(vac['description']).lower()
+                    split_title = re.findall(r'\b\w+\b', title_lower)
+                    if set(split_vacancy) & set(split_title):
+                        search_dict.append(vac)
+                json.dump(search_dict, file, ensure_ascii=False, indent=4)
 
-        :param vacancy: Экземпляр класса VacancyHH.
-        """
+    def json_results(self):
         with open(self.file_name, 'r', encoding='utf-8') as file:
-            vacancies = json.load(file)
-        with open(self.file_name, 'w', encoding='utf-8') as file:
-            test_dict = []
-            vacancy_lower = vacancy.lower()
-            split_vacancy = re.findall(r'\b\w+\b', vacancy_lower)
-            for vac in vacancies:
-                title_lower = vac['title'].lower()
-                split_title = re.findall(r'\b\w+\b', title_lower)
-                if set(split_vacancy) & set(split_title):
-                    continue
-                else:
-                    test_dict.append(vac)
-            json.dump(test_dict, file, ensure_ascii=False, indent=4)
+            final = json.load(file)
+            return final
