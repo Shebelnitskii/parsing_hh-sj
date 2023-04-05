@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 import os
 import requests
-from src.json_saver import JSONSaver
 
 
 class Engine(ABC):
@@ -10,18 +9,14 @@ class Engine(ABC):
         """Метод для выполнения запроса к сайту и получения данных"""
         pass
 
-    @staticmethod
-    def get_connector(file_name: str):
-        """Метод для получения экземпляра класса Connector"""
-        pass
 
 
 class HeadHunterAPI(Engine):
     def __init__(self):
         self.url_hh = "https://api.hh.ru/vacancies"
 
-    def get_class_vacancies(self, key: str, top_n: int):
-        params = {'text': key, 'per_page': top_n, 'experience': 'noExperience'}
+    def get_class_vacancies(self, exp: str, key_word: str):
+        params = {'text': key_word, 'per_page': 100, 'experience': exp, 'area': 113}
         response = requests.get(self.url_hh, params=params)
         if response.ok:
             data = response.json()
@@ -59,18 +54,20 @@ class Vacancy:
         self.employer = employer
         self.url = url
 
-    def __repr__(self):
+    def __str__(self):
         return f"title='{self.title}', salary='{self.salary}', " \
                f"description='{self.description}', employer='{self.employer}', url='{self.url}'"
 
 
 class SuperJobAPI(Engine):
     def __init__(self):
-        sj_api_key: str = os.getenv('SJ_API_KEY')
-        self.headers = {'X-Api-App-Id': sj_api_key}
+        self.sj_api_key: str = os.getenv('SJ_API_KEY')
+        self.headers = {'X-Api-App-Id': self.sj_api_key}
         self.url_sj = "https://api.superjob.ru/2.0/vacancies/"
 
-    def get_class_vacancies(self, params: dict) -> list:
+    def get_class_vacancies(self, exp: str, key_word: str):
+        params = {'keyword': {key_word}, 'count': 100, "experience": exp, "currency": {"0":"rub"}}
+
         response = requests.get(self.url_sj, headers=self.headers, params=params)
         if response.ok:
             data = response.json()
@@ -78,12 +75,16 @@ class SuperJobAPI(Engine):
             vacancies = []
             for vacancy in vacancies_data:
                 title = vacancy['profession']
-                salary_data = vacancy['payment_from'] or vacancy['payment_to']
-                if salary_data:
-                    salary = {'from': vacancy['payment_from'], 'to': vacancy['payment_to'],
-                              'currency': vacancy['currency']}
-                else:
-                    salary = {'from': None, 'to': None, 'currency': None}
+                try:
+                    if vacancy['payment_to'] == 0:  ### Проверка на диапазон зарплаты
+                        salary = {'from': vacancy['payment_from'], 'currency': vacancy['currency']}
+                    elif vacancy['payment_from'] == 0:
+                        salary = {'from': vacancy['payment_to'], 'currency': vacancy['currency']}
+                    else:
+                        salary = {'from': vacancy['from'], 'to': vacancy['to'],
+                                  'currency': vacancy['currency']}
+                except:
+                    salary = {'from': 0, 'currency': 'rub'}
                 description = vacancy['candidat']
                 employer = vacancy['firm_name']
                 url = vacancy['link']
@@ -92,32 +93,3 @@ class SuperJobAPI(Engine):
             return vacancies
         else:
             return []
-
-
-# hh_api = HeadHunterAPI()
-# search_query = input("Введите поисковый запрос: ")
-# top_n = int(input("Введите количество вакансий для вывода в топ N: "))
-# search_query = 'python'
-# top_n = 100
-# hh_vacancies = hh_api.get_class_vacancies(search_query, top_n)
-# print(len(hh_vacancies))
-# json_saver = JSONSaver()
-# json_saver.add_vacancy(hh_vacancies)
-# json_saver.get_vacancies_by_salary("50000 RUR")
-# json_saver.delete_vacancy("JavaScript, Java")
-# with open('JSON_HH', 'r', encoding='utf-8') as file:
-#     vacancies = json.load(file)
-# print(len(vacancies))
-# json_saver.clear_json()
-# with open('JSON_HH', 'r', encoding='utf-8') as file:
-#     vacancies = json.load(file)
-# print(len(vacancies))
-
-
-sj_api = SuperJobAPI()
-params_sj = {'keyword': 'разработчик python', 'count': 1, 'experience': {'1': 'без опыта'}}
-print(sj_api.get_class_vacancies(params_sj))
-sj_vacancies = sj_api.get_class_vacancies(params_sj)
-json_saver = JSONSaver()
-json_saver.add_vacancy(sj_vacancies)
-print(len(sj_vacancies))
